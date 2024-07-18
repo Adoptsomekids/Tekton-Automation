@@ -30,7 +30,7 @@ spec:
   params:
     - name: gitrepourl
       type: string
-      default: 'https://github.ibm.com/ProjectAbell/Automation.git'
+      default: 'https://github.com/Repo.git'
     - name: branch
       type: string
       default: 'master'
@@ -48,32 +48,6 @@ spec:
         ocp_console_ip =
         isf_namespace = ibm-spectrum-fusion-ns
 
-        [oc_info1]
-        ocp_console_url =
-        user_name =
-        password =
-        api_url =
-        ocp_console_ip =
-        isf_namespace =
-
-        [ui]
-        headless = true
-        browsers = chrome
-        driver_path = tests/user_interface/artifacts/browser_drivers
-        isf_app_url = 
-
-        [common]
-        oc_client_path = 
-        production_install = false
-        skip_upgrade_oc_client = false
-        login_type = htpasswd
-        isf_version =
-        product_type =
-
-        [nonadmin]
-        nonadmin_user =
-        nonadmin_password =
-        user_role =
   workspaces:
     - name: shared-workspace
   tasks:
