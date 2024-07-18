@@ -17,18 +17,20 @@ read -p "Do you want to generate files for all dictionaries? (yes/no): " process
 output_dir="pipelines"
 mkdir -p "$output_dir"
 
-# Template for the pipeline
+# Function to generate the pipeline template
 pipeline_template() {
+    local dict_name=$1
+    local pipeline_name=$(echo "$dict_name" | tr '[:upper:]_' '[:lower:]-')
     cat <<EOL
 apiVersion: tekton.dev/v1beta1
 kind: Pipeline
 metadata:
-  name: sds-pipeline
+  name: $pipeline_name
 spec:
   params:
     - name: gitrepourl
       type: string
-      default: 'https://github.com/Tekton-Automation.git'
+      default: 'https://github.ibm.com/ProjectAbell/Automation.git'
     - name: branch
       type: string
       default: 'master'
@@ -44,6 +46,34 @@ spec:
         password = 
         api_url = 
         ocp_console_ip =
+        isf_namespace = ibm-spectrum-fusion-ns
+
+        [oc_info1]
+        ocp_console_url =
+        user_name =
+        password =
+        api_url =
+        ocp_console_ip =
+        isf_namespace =
+
+        [ui]
+        headless = true
+        browsers = chrome
+        driver_path = tests/user_interface/artifacts/browser_drivers
+        isf_app_url = 
+
+        [common]
+        oc_client_path = 
+        production_install = false
+        skip_upgrade_oc_client = false
+        login_type = htpasswd
+        isf_version =
+        product_type =
+
+        [nonadmin]
+        nonadmin_user =
+        nonadmin_password =
+        user_role =
   workspaces:
     - name: shared-workspace
   tasks:
@@ -53,22 +83,24 @@ EOL
 # Function to process a single dictionary
 process_dictionary() {
     local dict_name=$1
-    local dict_content=$(jq -r ".$dict_name" "$json_file")
-    if [[ "$dict_content" == "null" ]]; then
+    local dict_content=$(jq -r ".$dict_name | to_entries | .[] | .key" "$json_file")
+    if [[ -z "$dict_content" ]]; then
         echo "The dictionary $dict_name does not exist in test_suites_info.json."
         return 1
     fi
 
     # Create a new pipeline file for the dictionary
     local pipeline_file="$output_dir/$dict_name.yaml"
-    pipeline_template > "$pipeline_file"
+    pipeline_template "$dict_name" > "$pipeline_file"
 
-    # Iterate over each key-value pair in the dictionary
-    local keys=$(jq -r "keys[]" <<< "$dict_content")
     local first_task=true
+    local prev_task_name=""
 
-    for key in $keys; do
-        # Create task names
+    # Add debugging information
+    echo "Processing dictionary: $dict_name"
+
+    # Read the content of the dictionary and process each task in order
+    echo "$dict_content" | while IFS=$'\n' read -r key; do
         local task_name=$(echo "$key-task" | tr '[:upper:]_' '[:lower:]-')
         local task_ref_name=$(echo "$key" | tr '[:upper:]_' '[:lower:]-')
 
@@ -78,7 +110,7 @@ process_dictionary() {
         echo "        name: $task_ref_name" >> "$pipeline_file"
         if ! $first_task; then
             echo "      runAfter:" >> "$pipeline_file"
-            echo "        - $(echo "$prev_task_name-task" | tr '[:upper:]_' '[:lower:]-')" >> "$pipeline_file"
+            echo "        - $prev_task_name" >> "$pipeline_file"
         fi
         echo "      params:" >> "$pipeline_file"
         echo "        - name: gitrepourl" >> "$pipeline_file"
@@ -95,7 +127,7 @@ process_dictionary() {
         echo "        - name: output" >> "$pipeline_file"
         echo "          workspace: shared-workspace" >> "$pipeline_file"
 
-        prev_task_name=$key
+        prev_task_name=$task_name
         first_task=false
     done
 
