@@ -30,7 +30,7 @@ spec:
   params:
     - name: gitrepourl
       type: string
-      default: 'https://github.com/Repo.git'
+      default: 'https://github.ibm.com/ProjectAbell/Automation.git'
     - name: branch
       type: string
       default: 'master'
@@ -48,6 +48,38 @@ spec:
         ocp_console_ip =
         isf_namespace = ibm-spectrum-fusion-ns
 
+        [oc_info1]
+        ocp_console_url =
+        user_name =
+        password =
+        api_url =
+        ocp_console_ip =
+        isf_namespace =
+
+        [ui]
+        headless = true
+        browsers = chrome
+        driver_path = tests/user_interface/artifacts/browser_drivers
+        isf_app_url = 
+
+        [common]
+        oc_client_path = 
+        production_install = false
+        skip_upgrade_oc_client = false
+        login_type = htpasswd
+        isf_version =
+        product_type =
+
+        [nonadmin]
+        nonadmin_user =
+        nonadmin_password =
+        user_role =
+    - name: github-repo
+      type: string
+      default: 'https://github.ibm.com/Emilio-giacomo/SVT-Orchestration-Tekton.git'
+    - name: report-branch
+      type: string
+      default: 'main'
   workspaces:
     - name: shared-workspace
   tasks:
@@ -95,6 +127,8 @@ process_dictionary() {
         echo "          value: \$(params.path)" >> "$pipeline_file"
         echo "        - name: contents" >> "$pipeline_file"
         echo "          value: \$(params.contents)" >> "$pipeline_file"
+        echo "        - name: pipelinerunname" >> "$pipeline_file"
+        echo "          value: \$(context.pipelineRun.name)" >> "$pipeline_file"
         echo "      workspaces:" >> "$pipeline_file"
         echo "        - name: source" >> "$pipeline_file"
         echo "          workspace: shared-workspace" >> "$pipeline_file"
@@ -104,6 +138,24 @@ process_dictionary() {
         prev_task_name=$task_name
         first_task=false
     done
+
+    # Add the final task to combine and upload reports
+    cat <<EOL >> "$pipeline_file"
+  finally:
+    - name: combine-and-upload-reports
+      taskRef:
+        name: combine-and-upload-allure-reports
+      params:
+        - name: github-repo
+          value: \$(params.github-repo)
+        - name: branch
+          value: \$(params.report-branch)
+        - name: pipelinerunname
+          value: \$(context.pipelineRun.name)
+      workspaces:
+        - name: source
+          workspace: shared-workspace
+EOL
 
     echo "Created pipeline file: $pipeline_file"
 }
