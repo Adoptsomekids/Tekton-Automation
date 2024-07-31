@@ -30,7 +30,7 @@ spec:
   params:
     - name: gitrepourl
       type: string
-      default: 'https://github.ibm.com/ProjectAbell/Automation.git'
+      default: 'https://github.com/repo.git'
     - name: branch
       type: string
       default: 'master'
